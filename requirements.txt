@@ -1,0 +1,3 @@
+-e git://github.com/sergray/rugovapi-client.git#egg=govapi_dev
+Django==1.4
+psycopg2==2.4.5
