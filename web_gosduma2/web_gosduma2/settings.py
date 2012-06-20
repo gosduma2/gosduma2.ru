@@ -133,6 +133,14 @@ INSTALLED_APPS = (
 LOGGING = {
     'version': 1,
     'disable_existing_loggers': False,
+    'formatters': {
+        'verbose': {
+            'format': '%(levelname)s %(asctime)s %(filename)s:%(lineno)s %(message)s'
+        },
+        'simple': {
+            'format': '%(levelname)s %(message)s'
+        },
+    },
     'filters': {
         'require_debug_false': {
             '()': 'django.utils.log.RequireDebugFalse'
@@ -143,7 +151,12 @@ LOGGING = {
             'level': 'ERROR',
             'filters': ['require_debug_false'],
             'class': 'django.utils.log.AdminEmailHandler'
-        }
+        },
+        'console': {
+            'level': 'DEBUG',
+            'class': 'logging.StreamHandler',
+            'formatter': 'verbose'
+        },
     },
     'loggers': {
         'django.request': {
@@ -151,8 +164,15 @@ LOGGING = {
             'level': 'ERROR',
             'propagate': True,
         },
+        'gosduma.management.commands.fetchlaws': {
+            'handlers': ['console'],
+            'level': 'DEBUG',
+        }
     }
 }
+
+GOVAPI_TOKEN = 'UPDATE_LOCAL_SETTINGS'
+GOVAPI_APP_TOKEN = 'UPDATE_LOCAL_SETTINGS'
 
 try:
     from local_settings import *
