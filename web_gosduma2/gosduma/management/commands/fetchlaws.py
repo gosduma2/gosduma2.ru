@@ -12,11 +12,43 @@ from govapi.clients import JSONClient
 
 logger = logging.getLogger(__name__)
 
+PUBLISHING_STAGE = 10  # from https://gist.github.com/5b513bf4d9af584a7f8d
+
 
 class Command(BaseCommand):
 
-    def store_law(self, law):
-        logger.debug(law)
+    def save_law(self, law_data):
+        event = law_data.get('lastEvent', {})
+        event_stage = event.get('stage', {})
+        stage_id = event_stage.get('id')
+        if stage_id == PUBLISHING_STAGE:
+            publishing_date = event['date']
+        else:
+            publishing_date = None
+        defaults = dict(
+            introduction_date=law_data['introductionDate'],
+            publishing_date=publishing_date,
+            name=law_data['name'],
+            comments=law_data['comments'],
+            transcript_url=law_data['transcriptUrl'],
+            url=law_data['url'],
+        )
+        law, created = Law.objects.get_or_create(
+            number=law_data['number'], defaults=defaults
+        )
+        # do sanity check
+        if not created:
+            if not law.publishing_date:
+                law.publishing_date = publishing_date
+                law.save()
+            # FIXME comparison of unicodes, because of implicit conversion of string to date on assignment to DateField
+            attributes_differ = [
+                unicode(getattr(law, attr)) != unicode(defaults[attr]) for attr in defaults.keys()
+            ]
+            if any(attributes_differ):
+                logger.error('inconsistent law %r and api %r' % (law, defaults))
+        logger.debug('law %r created=%r' % (law, created))
+        return law
 
     def handle(self, *args, **options):
         last_publishing_date = Law.objects.last_publishing_date()
@@ -25,8 +57,8 @@ class Command(BaseCommand):
             last_publishing_date = date.today() - timedelta(days=7)
         api_client = JSONClient(settings.GOVAPI_TOKEN, settings.GOVAPI_APP_TOKEN)
         search_options = dict(
-            search_mode=2,  # only last event
-            stage=10,  # published anywhere
+            search_mode=2,  # only last event from help(api_client.search)
+            stage=PUBLISHING_STAGE,
             event_start=last_publishing_date,
         )
         try:
@@ -36,7 +68,7 @@ class Command(BaseCommand):
             raise CommandError(exc)
         api_laws = api_results.get('laws', [])
         if api_laws:
-            map(self.store_law, api_laws)
+            map(self.save_law, api_laws)
         else:
             logger.debug(api_results)
         # check if there're other pages to fetch
@@ -55,4 +87,4 @@ class Command(BaseCommand):
                 api_results = None
                 break
             else:
-                map(self.store_law, api_results.get('laws', []))
+                map(self.save_law, api_results.get('laws', []))
