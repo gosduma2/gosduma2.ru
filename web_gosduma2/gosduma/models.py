@@ -9,7 +9,7 @@ from django.db import models
 
 class LawManager(models.Manager):
 
-    def last_publshing_date(self):
+    def last_publishing_date(self):
         laws = self.all().aggregate(last_publishing_date=models.Max('publishing_date'))
         return laws['last_publishing_date']
 
