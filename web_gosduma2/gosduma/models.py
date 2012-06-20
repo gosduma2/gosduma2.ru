@@ -7,17 +7,27 @@
 from django.db import models
 
 
+class LawManager(models.Manager):
+
+    def last_publshing_date(self):
+        laws = self.all().aggregate(last_publishing_date=models.Max('publishing_date'))
+        return laws['last_publishing_date']
+
+
 class Law(models.Model):
     """Законопроект внесенный в госдуму
 
     Например результат поиска по законам https://gist.github.com/7c31fae41d86c1d3f8cd
     """
     number = models.CharField(max_length=36, db_index=True, unique=True)  # номер законопроекта
-    introduction_date = models.DateField(required=True, db_index=True)  # дата внесения
-    name = models.TextField(required=True)  # название
+    introduction_date = models.DateField(db_index=True)  # дата внесения
+    publishing_date = models.DateField(null=True, default=None, db_index=True)  # дата опубликования
+    name = models.TextField()  # название
     comments = models.TextField(default='')  # комментарии
     transcript_url = models.URLField()  # адрес транскрипта обсуждения
     url = models.URLField()  # адрес законопроекта в АСОЗД (Автоматизированной Системе Обеспечения Законодательной Деятельности)
+
+    objects = LawManager()
 
     def __unicode__(self):
         return self.number
